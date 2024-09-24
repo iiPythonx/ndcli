@@ -1,0 +1,30 @@
+[project]
+name = "ndcli"
+dynamic = ["version"]
+description = "CLI for interacting with the Navidrome/Subsonic API."
+authors = [
+    { name = "iiPython", email = "ben@iipython.dev" }
+]
+dependencies = [
+    "click>=8.1.7",
+    "requests>=2.32.3",
+    "rich>=13.8.1",
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.scripts]
+ndcli = "ndcli.__main__:ndcli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "ndcli/__init__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["ndcli"]

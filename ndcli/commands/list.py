@@ -38,4 +38,4 @@ for name, method, title_format in [
     def command(asc: bool, sort: str):
         print(handle_page(method, asc, sort, title_format))
 
-    list_group.add_command(click.command(name)(command))
+    list_group.add_command(click.command(name, help = f"List all {name} on the Navidrome instance.")(command))

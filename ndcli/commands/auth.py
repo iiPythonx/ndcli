@@ -45,6 +45,7 @@ def login() -> None:
     config.set("auth", {
         "ss": result["subsonicSalt"],
         "st": result["subsonicToken"],
-        "nt": result["token"]
+        "nt": result["token"],
+        "un": result["username"]
     })
     return erase_last_line(f"[green]Logged in as {result['username']}.", 2)

@@ -10,7 +10,6 @@ from .show import show_item
 
 from ndcli import console
 from ndcli.api import navidrome
-from ndcli.utils import normalize
 from ndcli.utils.paging import Paginator
 
 # Commands
@@ -40,8 +39,13 @@ def list_command(asc: bool, sort: str, type: str) -> None:
 
     # Handle displaying selection
     data = handle_page(method, asc, sort, title_format)
-    match type:
-        case "tracks":
-            data = normalize.track(data)
+    if type == "tracks":
+        data = {
+            "track": data["trackNumber"],
+            "channelCount": data["channels"],
+            "samplingRate": data["sampleRate"],
+            "contentType": f"audio/{data['suffix']}",
+            **data
+        }
 
     show_item(data | {"type": type.rstrip("s") if type != "tracks" else "song"})

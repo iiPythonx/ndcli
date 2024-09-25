@@ -31,6 +31,7 @@ def ping() -> int:
 def login(username: str, password: str) -> dict:
     return make_request("post", "auth/login", json = {"username": username, "password": password}).json()
 
+# Searching (non-specific)
 def get_artists(**kwargs) -> List[dict]:
     return make_request("get", "api/artist", params = kwargs).json()
 
@@ -40,5 +41,9 @@ def get_albums(**kwargs) -> List[dict]:
 def get_tracks(**kwargs) -> List[dict]:
     return make_request("get", "api/song", params = kwargs).json()
 
+# Fetch by ID (specific)
 def get_artist(artist_id: str) -> dict:
     return make_request("get", f"api/artist/{artist_id}").json()
+
+def get_album(album_id: str) -> dict:
+    return make_request("get", f"api/album/{album_id}").json()

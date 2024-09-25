@@ -1,9 +1,6 @@
 # Copyright (c) 2024 iiPython
 
 # Modules
-import re
-from datetime import timedelta
-
 import click
 
 from . import ndcli
@@ -12,30 +9,10 @@ from ndcli import console
 from ndcli.api import subsonic, navidrome
 from ndcli.utils.paging import Paginator
 
-# Handle checking length
-def rlen(string: str) -> int:
-    return len(re.sub(r"\[.*?]", "", string))
-
-# Bytes conversion
-# https://stackoverflow.com/a/31631711
-def bytes_to_human(size: int) -> str:
-    B = float(size)
-    KB = float(1024)
-    MB = float(KB ** 2)
-    GB = float(KB ** 3)
-
-    if KB <= B < MB:
-        return "{0:.2f} KB".format(B / KB)
-
-    elif MB <= B < GB:
-        return "{0:.2f} MB".format(B / MB)
-
-    elif GB <= B:
-        return "{0:.2f} GB".format(B / GB)
+from .utils.sections import construct_sections, build_artist, build_album, build_song
 
 # Handle showing items
 def show_item(item: dict) -> None:
-    print(item)
     header_string = f"[white on black] {item['type'].upper()} [/] [blue]{item['title' if item['type'] == 'song' else 'name']}[/]"
     if item["type"] != "artist":
         header_string += f" by [blue]{item['artist']}[/]"
@@ -46,78 +23,26 @@ def show_item(item: dict) -> None:
     console.print(header_string, highlight = False)
 
     # Handle sections
-    if item["type"] == "artist":
-        with console.status("[blue]Loading artist info...", spinner = "arc"):
-            artist = navidrome.get_artist(item["id"])
-            releases = navidrome.get_albums(order = "DESC", sort = "releaseDate", artist_id = item["id"])
-            top_songs = subsonic.get_top_songs(artist = item["name"])
+    match item["type"]:
+        case "artist":
+            with console.status("[blue]Loading artist info...", spinner = "arc"):
+                sections = build_artist(
+                    navidrome.get_artist(item["id"]),
+                    navidrome.get_albums(order = "DESC", sort = "releaseDate", artist_id = item["id"]),
+                    subsonic.get_top_songs(artist = item["name"])
+                )
 
-        album_list = [
-            (f"{album['name']} [bright_black]({album['year']})[/]", "")
-            for album in sorted(
-                [item | {"year": item.get("originalDate", item["date"]).split("-")[0]} for item in releases],
-                key = lambda x: x["year"],
-                reverse = True
-            )
-        ]
-        if len(album_list) > 5:
-            album_list = album_list[:5] + [(f"[/][bright_black].. and {len(album_list) - 6} more ..[/][yellow]", "")]
+        case "album":
+            with console.status("[blue]Loading album info...", spinner = "arc"):
+                sections = build_album(
+                    navidrome.get_album(item["id"]),
+                    navidrome.get_tracks(album_id = item["id"])
+                )
 
-        sections = [
-            ("General", [
-                ("Play Count", artist["playCount"]),
-                ("Album Count", artist["albumCount"]),
-                ("Song Count", artist["songCount"]),
-                ("Size", bytes_to_human(artist["size"]))
-            ]),
-            ("Albums", album_list)
-        ]
-        if "genres" in artist:
-            sections.append(("Genres", [(genre["name"], "") for genre in artist["genres"]]))
+        case "song":
+            sections = build_song(item)
 
-        sections.append(("Top Songs", [
-            (f"{song['title']} [bright_black]({song['album']})[/]", "")
-            for song in top_songs[:5]
-        ]))
-
-    if item["type"] == "song":
-        sections = [
-            ("General", [
-                ("Album", item["album"]),
-                ("Play Count", item["playCount"]),
-                ("Track Number", item["track"]),
-                ("Release Year", item["year"]),
-                ("Genre", item.get("genre", "unknown"))
-            ]),
-            ("File", [
-                ("Bitrate", f"{item['bitRate']}kbps"),
-                ("BPM", f"{item['bpm'] if item['bpm'] != 0 else 'unknown'}"),
-                ("Channels", item["channelCount"]),
-                ("Sample Rate", f"{item['samplingRate'] / 1000}kHz"),
-                ("File Type", item["contentType"]),
-                ("Length", f"{timedelta(seconds = item['duration'])}"),
-                ("Size", bytes_to_human(item["size"]))
-            ])
-        ]
-
-    formatted_sections = []
-    for name, fields in sections:
-        lines = [f"[white on black] {name} [/]"]
-        for name, value in fields:
-            lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}")
-
-        length = rlen(max(lines, key = lambda x: rlen(x)))
-        formatted_sections.append([line + (" " * (length - rlen(line))) for line in lines])
-
-    longest_section = len(max(formatted_sections, key = lambda x: len(x)))
-
-    print_text = [""] * longest_section
-    for section in formatted_sections:
-        section += [" " * rlen(section[0])] * (longest_section - len(section))
-        for index, item in enumerate(section):
-            print_text[index] += item + " " * 5
-
-    console.print("\n" + "\n".join(print_text) + "\n", highlight = False)
+    console.print("\n" + "\n".join(construct_sections(sections)) + "\n", highlight = False)
 
 # Commands
 @ndcli.command("show", default_command = True)

@@ -86,7 +86,8 @@ def build_album(album: dict, tracks: List[dict]) -> List[Section]:
             (f"\x00{line}", "\x00")
             for line in str(from_url(
                 subsonic.build_request("get", "getCoverArt.view", params = {"id": album["id"], "size": 10}).url,
-                height = 10
+                height = 10,
+                width = 23
             )).split("\n")
         ])
     ]

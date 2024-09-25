@@ -42,7 +42,18 @@ def show_item(item: dict) -> None:
         case "song":
             sections = build_song(item)
 
-    console.print("\n" + "\n".join(construct_sections(sections)) + "\n", highlight = False)
+    print()
+    for line in construct_sections(sections):
+        with console.capture() as capture:
+            console.print(line.split(";ART")[0], highlight = False, end = "")
+
+        arguments = [capture.get()]
+        if ";ART" in line:
+            arguments.append(line.split(";ART")[1])
+
+        print(*arguments, sep = "")
+
+    print()
 
 # Commands
 @ndcli.command("show", default_command = True)

@@ -3,12 +3,14 @@
 # Modules
 from typing import Any, List
 
+from requests import Request
+
 from . import session
 from ndcli import __version__
 from ndcli.config import config
 
 # Setup request handling
-def make_request(method: str, endpoint: str, **kwargs) -> Any:
+def build_request(method: str, endpoint: str, **kwargs) -> str:
     kwargs["params"] = kwargs.get("params", {}) | {
         "c": "ndcli",
         "f": "json",
@@ -17,12 +19,14 @@ def make_request(method: str, endpoint: str, **kwargs) -> Any:
         "s": config.get("auth")["ss"],
         "t": config.get("auth")["st"]
     }
-    return session.request(
+    return Request(
         method.upper(),
         f"{config.get('server')}/rest/{endpoint}",
-        timeout = 5,
         **kwargs
-    ).json()["subsonic-response"]
+    ).prepare()
+
+def make_request(*args, **kwargs) -> Any:
+    return session.send(build_request(*args, **kwargs), timeout = 5, verify = False).json()["subsonic-response"]
 
 # Subsonic handling
 def search(

@@ -3,6 +3,9 @@
 # Modules
 from typing import List, Tuple
 
+from term_image.image import from_url
+
+from ndcli.api import subsonic
 from .show import bytes_to_human, duration, rlen
 
 # Typing
@@ -18,7 +21,7 @@ def construct_sections(sections: List[Section]) -> List[str]:
             if value is None:
                 continue
 
-            lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}")
+            lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}" if value != "!IGNORE" else name)
 
         length = rlen(max(lines, key = lambda x: rlen(x)))
         formatted_sections.append([line + (" " * (length - rlen(line))) for line in lines])
@@ -78,7 +81,14 @@ def build_album(album: dict, tracks: List[dict]) -> List[Section]:
         ("Tracks", truncate([
             (f"{track['title']} [bright_black]({duration(track['duration'])})[/]", "")
             for track in sorted(tracks, key = lambda x: x["trackNumber"])
-        ], 7))
+        ], 7)),
+        ("Cover Art", [
+            (f";ART{line}", "!IGNORE")
+            for line in str(from_url(
+                subsonic.build_request("get", "getCoverArt.view", params = {"id": album["id"], "size": 10}).url,
+                height = 10
+            )).split("\n")
+        ])
     ]
 
 def build_song(song: dict) -> List[Section]:

@@ -19,7 +19,7 @@ def login() -> None:
 
         server_url = f"http://{server_url}"
 
-    config.set("server", server_url)
+    navidrome.server = server_url
     erase_last_line(f"[blue]Navidrome URL: {server_url}")
     
     # Check status of input
@@ -34,6 +34,8 @@ def login() -> None:
     if response_status != 200:
         return console.print("[red]Connection to specified server failed, check your URL.")
 
+    config.set("server", server_url)
+
     # Attempt to login
     username, password = console.input("[blue]Navidrome username: "), console.input("[blue]Navidrome password: ", password = True)
     with console.status("[blue]Logging in...", spinner = "arc"):
@@ -42,10 +44,6 @@ def login() -> None:
     if "error" in result:
         return erase_last_line(f"[red]{result['error']}.", 2)
 
-    config.set("auth", {
-        "ss": result["subsonicSalt"],
-        "st": result["subsonicToken"],
-        "nt": result["token"],
-        "un": result["username"]
-    })
+    config.set("auth", result)
+    navidrome.auth = result
     return erase_last_line(f"[green]Logged in as {result['username']}.", 2)

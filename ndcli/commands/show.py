@@ -6,41 +6,41 @@ import click
 from . import ndcli
 
 from ndcli import console
-from ndcli.api import subsonic, navidrome
+from ndcli.api import navidrome
+from ndcli.api.typing import Artist, Album, Track, TypedObject
 from ndcli.utils.paging import Paginator
 
-from .utils.sections import construct_sections, build_artist, build_album, build_song
+from .utils.sections import construct_sections, build_artist, build_album, build_track
 
 # Handle showing items
-def show_item(item: dict) -> None:
-    header_string = f"[white on black] {item['type'].upper()} [/] [blue]{item['title' if item['type'] == 'song' else 'name']}[/]"
-    if item["type"] != "artist":
-        header_string += f" by [blue]{item['artist']}[/]"
+def show_item(item: TypedObject) -> None:
+    header_string = f"[white on black] {type(item).__name__.upper()} [/] [blue]{item.name}[/]"
+    if not isinstance(item, Artist):
+        header_string += f" by [blue]{item.artist}[/]"
 
-    if "userRating" in item:
-        header_string += f" [bright_black]{'★' * item['userRating']}"
+    if hasattr(item, "rating"):
+        header_string += f" [bright_black]{'★' * item.rating}"
 
     console.print(header_string, highlight = False)
 
     # Handle sections
-    match item["type"]:
-        case "artist":
-            with console.status("[blue]Loading artist info...", spinner = "arc"):
-                sections = build_artist(
-                    navidrome.get_artist(item["id"]),
-                    navidrome.get_albums(order = "DESC", sort = "releaseDate", artist_id = item["id"]),
-                    subsonic.get_top_songs(artist = item["name"])
-                )
+    if isinstance(item, Artist):
+        with console.status("[blue]Loading artist info...", spinner = "arc"):
+            sections = build_artist(
+                item,
+                navidrome.get_albums(order = "DESC", sort = "releaseDate", artist_id = item.id),
+                navidrome.get_top_songs(artist = item.name)
+            )
 
-        case "album":
-            with console.status("[blue]Loading album info...", spinner = "arc"):
-                sections = build_album(
-                    navidrome.get_album(item["id"]),
-                    navidrome.get_tracks(album_id = item["id"])
-                )
+    elif isinstance(item, Album):
+        with console.status("[blue]Loading album info...", spinner = "arc"):
+            sections = build_album(
+                item,
+                navidrome.get_tracks(album_id = item.id)
+            )
 
-        case "song":
-            sections = build_song(item)
+    elif isinstance(item, Track):
+        sections = build_track(item)
 
     print()
     for line in construct_sections(sections):
@@ -64,28 +64,19 @@ def show_command(query: str) -> None:
     # Normalize our query
     actual_query = " ".join(query).strip().lower()
     with console.status("[blue]Searching...", spinner = "arc"):
-        response = subsonic.search(actual_query, 4, 4, 4)
+        response = navidrome.search(actual_query, 4, 4, 4)
 
     # Begin matching
-    results = []
-    for item_type, items in response.items():
-        for item in items:
-            results.append(item | {"type": item_type})
-
-    direct_matches = []
-    for item in results:
-        if item["title" if item["type"] == "song" else "name"].lower() == actual_query:
-            direct_matches.append(item)
-
+    direct_matches = [item for item in response if item.name.lower() == actual_query]
     if len(direct_matches) == 1:
         return show_item(direct_matches[0])
 
     # Handle selection
     page_items = []
-    for item in results:
-        text = f"{item['title' if item['type'] == 'song' else 'name']} [bright_black]({item['type'].capitalize()})"
-        if item["type"] in ["song", "album"]:
-            text = text[:-1] + f", [yellow]{item['artist'] if item['type'] == 'album' else item['album']}[/])"
+    for item in response:
+        text = f"{item.name} [bright_black]({type(item).__name__})"
+        if isinstance(item, (Album, Track)):
+            text = text[:-1] + f", [yellow]{item.artist if isinstance(item, Album) else item.album}[/])"
 
         page_items.append((item, text))
 

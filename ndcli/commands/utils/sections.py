@@ -5,11 +5,12 @@ from typing import List, Tuple
 
 from term_image.image import from_url
 
-from ndcli.api import subsonic
+from ndcli.api import navidrome
+from ndcli.api.typing import Artist, Album, Track
 from .show import bytes_to_human, duration, rlen
 
 # Typing
-Field = Tuple[str, str]
+Field = Tuple[str, str | None]
 Section = Tuple[str, List[Field]]
 
 # Handle section formatting and construction
@@ -43,13 +44,13 @@ def truncate(items: List[Field], amount: int) -> List[Field]:
 
     return items
 
-def build_artist(artist: dict, albums: List[dict], top_songs: List[dict]) -> List[Section]:
-    return [
+def build_artist(artist: Artist, albums: List[dict], top_songs: List[dict]) -> List[Section]:
+    sections = [
         ("General", [
-            ("Play Count", artist["playCount"]),
-            ("Album Count", artist["albumCount"]),
-            ("Song Count", artist["songCount"]),
-            ("Size", bytes_to_human(artist["size"]))
+            ("Play Count", artist.play_count),
+            ("Album Count", artist.album_count),
+            ("Song Count", artist.song_count),
+            ("Size", bytes_to_human(artist.size))
         ]),
         ("Albums", truncate([
             (f"{album['name']} [bright_black]({album['year']})[/]", "")
@@ -62,21 +63,24 @@ def build_artist(artist: dict, albums: List[dict], top_songs: List[dict]) -> Lis
         ("Top Songs", [
             (f"{song['title']} [bright_black]({song['album']})[/]", "")
             for song in top_songs[:5]
-        ]),
-        ("Genres", [(genre["name"], "") for genre in artist.get("genres", [{"name": "None."}])])
+        ])
     ]
+    if artist.genres:
+        sections.append(("Genres", [(genre, "") for genre in artist.genres]))
 
-def build_album(album: dict, tracks: List[dict]) -> List[Section]:
+    return sections
+
+def build_album(album: Album, tracks: List[dict]) -> List[Section]:
     return [
         ("General", [
-            ("Play Count", album["playCount"]),
-            ("Release Date", album.get("releaseDate")),
-            ("Original Date", album.get("originalDate") if album.get("releaseDate") != album.get("originalDate") else None),
-            ("Genre", album.get("genre") or "unknown"),
-            ("Discs", len(album.get("discs", [0]))),
-            ("Song Count", album["songCount"]),
-            ("Length", f"{duration(album['duration'])}"),
-            ("Size", bytes_to_human(album["size"])),
+            ("Play Count", album.play_count),
+            ("Release Date", album.release_date),
+            ("Original Date", album.original_date if album.release_date != album.original_date else None),
+            ("Genre", album.genre or "unknown"),
+            ("Discs", len(album.discs)),
+            ("Song Count", album.song_count),
+            ("Length", f"{duration(album.duration)}"),
+            ("Size", bytes_to_human(album.size)),
         ]),
         ("Tracks", truncate([
             (f"{track['title']} [bright_black]({duration(track['duration'])})[/]", "")
@@ -85,29 +89,29 @@ def build_album(album: dict, tracks: List[dict]) -> List[Section]:
         ("Cover Art", [
             (f"\x00{line}", "\x00")
             for line in str(from_url(
-                subsonic.build_request("get", "getCoverArt.view", params = {"id": album["id"], "size": 10}).url,
+                navidrome.build_subsonic("get", "getCoverArt.view", params = {"id": album.id, "size": 10}).url,
                 height = 10,
                 width = 23
             )).split("\n")
         ])
     ]
 
-def build_song(song: dict) -> List[Section]:
+def build_track(track: Track) -> List[Section]:
     return [
         ("General", [
-            ("Album", song["album"]),
-            ("Play Count", song["playCount"]),
-            ("Track Number", song["track"]),
-            ("Release Year", song["year"]),
-            ("Genre", song.get("genre") or "unknown")
+            ("Album", track.album),
+            ("Play Count", track.play_count),
+            ("Track Number", track.track),
+            ("Release Year", track.year),
+            ("Genre", ", ".join(track.genres))
         ]),
         ("File", [
-            ("Bitrate", f"{song['bitRate']}kbps"),
-            ("BPM", f"{song['bpm'] if song.get('bpm') else 'unknown'}"),
-            ("Channels", song["channelCount"]),
-            ("Sample Rate", f"{song['samplingRate'] / 1000}kHz"),
-            ("File Type", song["contentType"]),
-            ("Length", f"{duration(song['duration'])}"),
-            ("Size", bytes_to_human(song["size"]))
+            ("Bitrate", f"{track.bitrate}kbps"),
+            ("BPM", track.bpm or "unknown"),
+            ("Channels", track.channels),
+            ("Sample Rate", f"{track.sample_rate / 1000}kHz"),
+            ("File Type", track.mimetype),
+            ("Length", f"{duration(track.duration)}"),
+            ("Size", bytes_to_human(track.size))
         ])
     ]

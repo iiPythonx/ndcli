@@ -22,7 +22,7 @@ def handle_page(method: Callable, ascending: bool, sort: str, title_format: Call
     with console.status("[blue]Fetching data...", spinner = "arc"):
         results = [
             (a["id"], title_format(a))
-            for a in method(0, 0, "ASC" if ascending else "DESC", sort)
+            for a in method(start = 0, end = 0, order = "ASC" if ascending else "DESC", sort = sort)
         ]
 
     return Paginator(results).render()

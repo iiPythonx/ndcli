@@ -22,7 +22,7 @@ def make_request(method: str, endpoint: str, **kwargs) -> Any:
         f"{config.get('server')}/rest/{endpoint}",
         timeout = 5,
         **kwargs
-    )
+    ).json()["subsonic-response"]
 
 # Subsonic handling
 def search(
@@ -42,4 +42,7 @@ def search(
         "artistOffset": artist_offset,
         "songCount": song_count,
         "songOffset": song_offset
-    }).json()["subsonic-response"]["searchResult3"]
+    })["searchResult3"]
+
+def get_top_songs(artist: str) -> List[dict]:
+    return make_request("get", "getTopSongs.view", params = {"artist": artist})["topSongs"]["song"]

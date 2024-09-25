@@ -45,11 +45,11 @@ def show_item(item: dict) -> None:
     print()
     for line in construct_sections(sections):
         with console.capture() as capture:
-            console.print(line.split(";ART")[0], highlight = False, end = "")
+            console.print(line.split("\x00")[0], highlight = False, end = "")
 
         arguments = [capture.get()]
-        if ";ART" in line:
-            arguments.append(line.split(";ART")[1])
+        if "\x00" in line:
+            arguments.append(line.split("\x00")[1])
 
         print(*arguments, sep = "")
 

@@ -21,7 +21,7 @@ def construct_sections(sections: List[Section]) -> List[str]:
             if value is None:
                 continue
 
-            lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}" if value != "!IGNORE" else name)
+            lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}" if value != "\x00" else name)
 
         length = rlen(max(lines, key = lambda x: rlen(x)))
         formatted_sections.append([line + (" " * (length - rlen(line))) for line in lines])
@@ -83,7 +83,7 @@ def build_album(album: dict, tracks: List[dict]) -> List[Section]:
             for track in sorted(tracks, key = lambda x: x["trackNumber"])
         ], 7)),
         ("Cover Art", [
-            (f";ART{line}", "!IGNORE")
+            (f"\x00{line}", "\x00")
             for line in str(from_url(
                 subsonic.build_request("get", "getCoverArt.view", params = {"id": album["id"], "size": 10}).url,
                 height = 10

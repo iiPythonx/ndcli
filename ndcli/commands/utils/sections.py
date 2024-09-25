@@ -15,6 +15,9 @@ def construct_sections(sections: List[Section]) -> List[str]:
     for name, fields in sections:
         lines = [f"[white on black] {name} [/]"]
         for name, value in fields:
+            if value is None:
+                continue
+
             lines.append(f"[yellow]{name}{':' if value else ''}[/] {value}")
 
         length = rlen(max(lines, key = lambda x: rlen(x)))
@@ -65,7 +68,7 @@ def build_album(album: dict, tracks: List[dict]) -> List[Section]:
         ("General", [
             ("Play Count", album["playCount"]),
             ("Release Date", album.get("releaseDate")),
-            ("Original Date", album.get("originalDate")),
+            ("Original Date", album.get("originalDate") if album.get("releaseDate") != album.get("originalDate") else None),
             ("Genre", album.get("genre") or "unknown"),
             ("Discs", len(album.get("discs", [0]))),
             ("Song Count", album["songCount"]),

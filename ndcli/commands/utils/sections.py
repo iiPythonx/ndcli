@@ -44,7 +44,7 @@ def truncate(items: List[Field], amount: int) -> List[Field]:
 
     return items
 
-def build_artist(artist: Artist, albums: List[dict], top_songs: List[dict]) -> List[Section]:
+def build_artist(artist: Artist, albums: List[Album], top_songs: List[Track]) -> List[Section]:
     sections = [
         ("General", [
             ("Play Count", artist.play_count),
@@ -53,15 +53,15 @@ def build_artist(artist: Artist, albums: List[dict], top_songs: List[dict]) -> L
             ("Size", bytes_to_human(artist.size))
         ]),
         ("Albums", truncate([
-            (f"{album['name']} [bright_black]({album['year']})[/]", "")
+            (f"{album.name} [bright_black]({album.year})[/]", "")
             for album in sorted(
-                [item | {"year": item.get("originalDate", item["date"]).split("-")[0]} for item in albums],
-                key = lambda x: x["year"],
+                albums,
+                key = lambda x: x.year,
                 reverse = True
             )
         ], 5)),
         ("Top Songs", [
-            (f"{song['title']} [bright_black]({song['album']})[/]", "")
+            (f"{song.name} [bright_black]({song.album})[/]", "")
             for song in top_songs[:5]
         ])
     ]
@@ -83,8 +83,8 @@ def build_album(album: Album, tracks: List[dict]) -> List[Section]:
             ("Size", bytes_to_human(album.size)),
         ]),
         ("Tracks", truncate([
-            (f"{track['title']} [bright_black]({duration(track['duration'])})[/]", "")
-            for track in sorted(tracks, key = lambda x: x["trackNumber"])
+            (f"{track.name} [bright_black]({duration(track.duration)})[/]", "")
+            for track in sorted(tracks, key = lambda x: x.track)
         ], 7)),
         ("Cover Art", [
             (f"\x00{line}", "\x00")
@@ -103,7 +103,7 @@ def build_track(track: Track) -> List[Section]:
             ("Play Count", track.play_count),
             ("Track Number", track.track),
             ("Release Year", track.year),
-            ("Genre", ", ".join(track.genres))
+            ("Genre", ", ".join(track.genres) if track.genres else None)
         ]),
         ("File", [
             ("Bitrate", f"{track.bitrate}kbps"),

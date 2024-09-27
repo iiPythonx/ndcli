@@ -30,10 +30,11 @@ class Mapping:
         "duration": "duration",
         "size": "size",
         "genre": "genre",
-        "discs": "discs" 
+        "discs": ("discs", lambda x: x or []),
+        "year": "year"
     }
     TRACK = {
-        "playCount": "play_count",
+        "playCount": ("play_count", lambda x: x or 0),
         "played": "play_date",
         "id": "id",
         "title": "name",
@@ -41,27 +42,26 @@ class Mapping:
         "album": "album",
         "track": "track",
         "year": "year",
+        "trackNumber": "track",
+        "discNumber": "disc",
         "contentType": "mimetype",
         "bpm": ("bpm", lambda x: None if not x else x),
         "bitRate": "bitrate",
         "duration": "duration",
         "size": "size",
-        "genres": ("genres", lambda x: [genre["name"] for genre in x]),
+        "genres": ("genres", lambda x: [genre["name"] for genre in (x or [])]),
         "channelCount": "channels",
         "samplingRate": "sample_rate"
     }
 
 class TypedObject():
     def __init__(self, payload: dict, mapping: dict) -> None:
-        for k, v in payload.items():
-            if k not in mapping:
-                continue
+        for k, v in mapping.items():
+            replacement, value = v, payload.get(k)
+            if isinstance(v, tuple):
+                replacement, value = v[0], v[1](value)
 
-            replacement = mapping[k]
-            if isinstance(replacement, tuple):
-                replacement, v = replacement[0], replacement[1](v)
-
-            setattr(self, replacement, v)
+            setattr(self, replacement, value)
 
 class Artist(TypedObject):
     def __init__(self, payload: dict) -> None:
@@ -70,7 +70,10 @@ class Artist(TypedObject):
 class Album(TypedObject):
     def __init__(self, payload: dict) -> None:
         super().__init__(payload, Mapping.ALBUM)
+        self.release_date = self.release_date or self.date
+        self.original_date = self.original_date or self.date
+        self.year = self.year or self.date.split("-")[0]
 
 class Track(TypedObject):
     def __init__(self, payload: dict) -> None:
-        super().__init__(payload, Mapping.TRACK )
+        super().__init__(payload, Mapping.TRACK)

@@ -3,9 +3,9 @@
 # Modules
 import os
 import urllib3
-from typing import Any, List
+from typing import Any, List, Sequence
 
-from requests import Session, Request
+from requests import PreparedRequest, Session, Request
 
 from .typing import Artist, Album, Track, TypedObject
 
@@ -19,7 +19,7 @@ urllib3.disable_warnings()
 # Setup API handling
 class Navidrome():
     def __init__(self) -> None:
-        self.auth = config.get("auth")
+        self.auth = config.get("auth") or {}
         self.server = config.get("server")
         self.session = Session()
 
@@ -29,7 +29,7 @@ class Navidrome():
         }
 
     # Handle actual request making
-    def build_subsonic(self, method: str, endpoint: str, **kwargs) -> str:
+    def build_subsonic(self, method: str, endpoint: str, **kwargs) -> PreparedRequest:
         kwargs["params"] = kwargs.get("params", {}) | {
             "c": "ndcli",
             "f": "json",
@@ -71,7 +71,7 @@ class Navidrome():
         album_offset: int = 0,
         artist_offset: int = 0,
         song_offset: int = 0,
-    ) -> List[TypedObject]:
+    ) -> Sequence[TypedObject]:
         response = self.request_subsonic("get", "search3.view", params = {
             "query": query,
             "albumCount": album_count,
@@ -81,12 +81,15 @@ class Navidrome():
             "songCount": song_count,
             "songOffset": song_offset
         })["searchResult3"]
-        return [Artist(self.get_artist(artist["id"])) for artist in response.get("artist", [])] + \
-                [Album(self.get_album(album["id"])) for album in response.get("album", [])] + \
+        return [self.get_artist(artist["id"]) for artist in response.get("artist", [])] + \
+                [self.get_album(album["id"]) for album in response.get("album", [])] + \
                 [Track(track) for track in response.get("song", [])]
 
-    def get_top_songs(self, artist: str) -> List[dict]:
-        return self.request_subsonic("get", "getTopSongs.view", params = {"artist": artist})["topSongs"]["song"]
+    def get_top_songs(self, artist: str) -> List[Track]:
+        return [
+            Track(track) for track in
+            self.request_subsonic("get", "getTopSongs.view", params = {"artist": artist})["topSongs"]["song"]
+        ]
 
     # Handle navidrome endpoints
     def ping(self) -> int:
@@ -95,19 +98,28 @@ class Navidrome():
     def login(self, username: str, password: str) -> dict:
         return self.request_navidrome("post", "auth/login", json = {"username": username, "password": password}).json()
 
-    def get_artists(self, **kwargs) -> List[dict]:
-        return self.request_navidrome("get", "api/artist", params = kwargs).json()
+    def get_artists(self, **kwargs) -> List[Artist]:
+        return [
+            Artist(artist) for artist in
+            self.request_navidrome("get", "api/artist", params = kwargs).json()
+        ]
 
-    def get_albums(self, **kwargs) -> List[dict]:
-        return self.request_navidrome("get", "api/album", params = kwargs).json()
+    def get_albums(self, **kwargs) -> List[Album]:
+        return [
+            Album(album) for album in
+            self.request_navidrome("get", "api/album", params = kwargs).json()
+        ]
 
-    def get_tracks(self, **kwargs) -> List[dict]:
-        return self.request_navidrome("get", "api/song", params = kwargs).json()
+    def get_tracks(self, **kwargs) -> List[Track]:
+        return [
+            Track(track) for track in
+            self.request_navidrome("get", "api/song", params = kwargs).json()
+        ]
 
-    def get_artist(self, artist_id: str) -> dict:
-        return self.request_navidrome("get", f"api/artist/{artist_id}").json()
+    def get_artist(self, artist_id: str) -> Artist:
+        return Artist(self.request_navidrome("get", f"api/artist/{artist_id}").json())
 
-    def get_album(self, album_id: str) -> dict:
-        return self.request_navidrome("get", f"api/album/{album_id}").json()
+    def get_album(self, album_id: str) -> Album:
+        return Album(self.request_navidrome("get", f"api/album/{album_id}").json())
 
 navidrome = Navidrome()

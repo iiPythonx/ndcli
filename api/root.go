@@ -21,6 +21,11 @@ type Navidrome struct {
 	credentials Credentials
 }
 
+func (nd Navidrome) Ping() bool {
+	response, _ := nd.Request("GET", "ping", nil)
+	return string(response) == "."
+}
+
 func (nd Navidrome) Login(username string, password string) (bool, *Credentials) {
 	payload, err := json.Marshal(map[string]interface{}{
 		"username": username,
@@ -31,23 +36,28 @@ func (nd Navidrome) Login(username string, password string) (bool, *Credentials)
 	}
 
 	var credentials Credentials
-	nd.Request("POST", "auth/login", bytes.NewBuffer(payload), &credentials)
+	nd.JsonRequest("POST", "auth/login", payload, &credentials)
 	return true, &credentials
 }
 
-func (nd Navidrome) Request(method string, endpoint string, payload io.Reader, model interface{}) error {
+func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, model interface{}) {
+	response, _ := nd.Request(method, endpoint, bytes.NewBuffer(payload))
+	json.Unmarshal(response, &model)
+}
+
+func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", nd.server, endpoint), payload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Add("X-Nd-Authorization", fmt.Sprintf("Bearer: %s", nd.credentials.NavidromeToken))
 	resp, err := nd.client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	json.NewDecoder(resp.Body).Decode(model)
 	defer resp.Body.Close()
-	return nil
+	body, _ := io.ReadAll(resp.Body)
+	return body, nil
 }
 
 func Initialize(server string, creds Credentials) *Navidrome {

@@ -8,8 +8,11 @@ import (
 	"net/http"
 )
 
+type ErrorResponse struct {
+	Message string `json:"error"`
+}
+
 type Credentials struct {
-	ErrorMessage   string `json:"error"`
 	NavidromeUser  string `json:"username"`
 	NavidromeToken string `json:"token"`
 	SubsonicSalt   string `json:"subsonicSalt"`
@@ -24,29 +27,37 @@ type Navidrome struct {
 
 func (nd Navidrome) Ping() bool {
 	response, _ := nd.Request("GET", "ping", nil)
-	return string(response) == "."
+	body, _ := io.ReadAll(response.Body)
+	return string(body) == "."
 }
 
-func (nd Navidrome) Login(username string, password string) (bool, *Credentials) {
+func (nd Navidrome) Login(username string, password string) (*ErrorResponse, *Credentials) {
 	payload, err := json.Marshal(map[string]interface{}{
 		"username": username,
 		"password": password,
 	})
 	if err != nil {
-		return false, &nd.credentials
+		return &ErrorResponse{Message: "Failed to encode credentials"}, &nd.credentials
 	}
-
-	var credentials Credentials
-	nd.JsonRequest("POST", "auth/login", payload, &credentials)
-	return credentials.ErrorMessage == "", &credentials
+	var (
+		credentials   Credentials
+		error_details ErrorResponse
+	)
+	nd.JsonRequest("POST", "auth/login", payload, &credentials, &error_details)
+	return &error_details, &credentials
 }
 
-func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, model interface{}) {
+func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, successModel interface{}, failureModel interface{}) {
 	response, _ := nd.Request(method, endpoint, bytes.NewBuffer(payload))
-	json.Unmarshal(response, &model)
+	decoder := json.NewDecoder(response.Body)
+	if response.StatusCode == 200 {
+		decoder.Decode(&successModel)
+		return
+	}
+	decoder.Decode(&failureModel)
 }
 
-func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) ([]byte, error) {
+func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", nd.server, endpoint), payload)
 	if err != nil {
 		return nil, err
@@ -56,9 +67,10 @@ func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	return body, nil
+	return resp, nil
+	// defer resp.Body.Close()
+	// body, _ := io.ReadAll(resp.Body)
+	// return body, nil
 }
 
 func Initialize(server string, creds Credentials) *Navidrome {

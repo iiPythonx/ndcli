@@ -45,13 +45,13 @@ var loginCmd = &cobra.Command{
 		color.Green("Navidrome URL: %s", server)
 
 		// Handle login credentials
-		success, credentials := nd.Login(
+		err, credentials := nd.Login(
 			Input(reader, color.FgCyan, "Navidrome username: "),
 			Input(reader, color.FgCyan, "Navidrome password: "),
 		)
 		EraseLine(2)
-		if !success {
-			color.Red("Login failed, Navidrome response: %s.", credentials.ErrorMessage)
+		if err != nil {
+			color.Red("Login failed, Navidrome response: %s.", err.Message)
 			return
 		}
 		color.Green("Logged in as %s.", credentials.NavidromeUser)

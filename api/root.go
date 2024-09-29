@@ -9,6 +9,7 @@ import (
 )
 
 type Credentials struct {
+	ErrorMessage   string `json:"error"`
 	NavidromeUser  string `json:"username"`
 	NavidromeToken string `json:"token"`
 	SubsonicSalt   string `json:"subsonicSalt"`
@@ -37,7 +38,7 @@ func (nd Navidrome) Login(username string, password string) (bool, *Credentials)
 
 	var credentials Credentials
 	nd.JsonRequest("POST", "auth/login", payload, &credentials)
-	return true, &credentials
+	return credentials.ErrorMessage == "", &credentials
 }
 
 func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, model interface{}) {

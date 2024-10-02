@@ -58,12 +58,25 @@ func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, 
 	decoder.Decode(&failureModel)
 }
 
-func (nd Navidrome) JsonRequestSubsonic(method string, endpoint string, payload []byte, model interface{}) {
-	response, _ := nd.Request(method, fmt.Sprintf("rest/%s", endpoint), bytes.NewBuffer(payload))
+func (nd Navidrome) JsonRequestSubsonic(method string, endpoint string, params url.Values, model interface{}) {
+	credentials := url.Values{
+		"c": {"ndcli"},
+		"f": {"json"},
+		"v": {"no idea"},
+		"u": {nd.credentials.NavidromeUser},
+		"s": {nd.credentials.SubsonicSalt},
+		"t": {nd.credentials.SubsonicToken},
+	}
+	for param, value := range credentials {
+		params[param] = append(params[param], value...)
+	}
+
+	response, _ := nd.Request(method, fmt.Sprintf("rest/%s?%s", endpoint, params.Encode()), nil)
 	json.NewDecoder(response.Body).Decode(&model)
 }
 
 func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) (*http.Response, error) {
+	fmt.Printf("[Request] %s/%s\n", nd.server, endpoint)
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", nd.server, endpoint), payload)
 	if err != nil {
 		return nil, err
@@ -81,14 +94,30 @@ func Initialize(server string, creds Credentials) *Navidrome {
 }
 
 // API Requests
+type GenericResponse struct {
+	Response SubsonicResponse `json:"subsonic-response"`
+}
+
+type SubsonicResponse struct {
+	Status        string `json:"status"`
+	Version       string `json:"version"`
+	Type          string `json:"type"`
+	ServerVersion string `json:"serverVersion"`
+	OpenSubsonic  bool   `json:"openSubsonic"`
+
+	// Responses
+	SearchResult3 SearchResults `json:"searchResult3"`
+}
+
 type SearchResults struct {
-	Artists []Artist
-	Albums  []Album
-	Tracks  []Track
+	Artists []Artist `json:"artist"`
+	Albums  []Album  `json:"album"`
+	Tracks  []Track  `json:"song"`
 }
 
 func (nd Navidrome) Search(query string, album_count int, artist_count int, song_count int) SearchResults {
-	params := url.Values{
+	var results GenericResponse
+	nd.JsonRequestSubsonic("GET", "search3.view", url.Values{
 		"query":        {query},
 		"albumCount":   {string(album_count)},
 		"albumOffset":  {"0"},
@@ -96,10 +125,6 @@ func (nd Navidrome) Search(query string, album_count int, artist_count int, song
 		"artistOffset": {"0"},
 		"song_count":   {string(song_count)},
 		"songOffset":   {"0"},
-	}
-	fmt.Println(params.Encode())
-	// nd.JsonRequestSubsonic("GET", "search3.view", )
-	return SearchResults{}
-	// Artists: ,
-	// }
+	}, &results)
+	return results.Response.SearchResult3
 }

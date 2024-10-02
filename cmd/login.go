@@ -8,6 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/iipythonx/ndcli/api"
+	"github.com/iipythonx/ndcli/config"
 	"github.com/spf13/cobra"
 )
 
@@ -50,12 +51,17 @@ var loginCmd = &cobra.Command{
 			Input(reader, color.FgCyan, "Navidrome password: "),
 		)
 		EraseLine(2)
-		if err != nil {
+		if err.Message != "" {
 			color.Red("Login failed, Navidrome response: %s.", err.Message)
 			return
 		}
 		color.Green("Logged in as %s.", credentials.NavidromeUser)
-		fmt.Println(credentials)
+
+		// Save to disk
+		config.WriteConfiguration(config.Configuration{
+			Credentials: *credentials,
+			Server:      server,
+		})
 	},
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type ErrorResponse struct {
@@ -57,6 +58,11 @@ func (nd Navidrome) JsonRequest(method string, endpoint string, payload []byte, 
 	decoder.Decode(&failureModel)
 }
 
+func (nd Navidrome) JsonRequestSubsonic(method string, endpoint string, payload []byte, model interface{}) {
+	response, _ := nd.Request(method, fmt.Sprintf("rest/%s", endpoint), bytes.NewBuffer(payload))
+	json.NewDecoder(response.Body).Decode(&model)
+}
+
 func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", nd.server, endpoint), payload)
 	if err != nil {
@@ -68,11 +74,32 @@ func (nd Navidrome) Request(method string, endpoint string, payload io.Reader) (
 		return nil, err
 	}
 	return resp, nil
-	// defer resp.Body.Close()
-	// body, _ := io.ReadAll(resp.Body)
-	// return body, nil
 }
 
 func Initialize(server string, creds Credentials) *Navidrome {
 	return &Navidrome{server: server, client: &http.Client{}, credentials: creds}
+}
+
+// API Requests
+type SearchResults struct {
+	Artists []Artist
+	Albums  []Album
+	Tracks  []Track
+}
+
+func (nd Navidrome) Search(query string, album_count int, artist_count int, song_count int) SearchResults {
+	params := url.Values{
+		"query":        {query},
+		"albumCount":   {string(album_count)},
+		"albumOffset":  {"0"},
+		"artist_count": {string(artist_count)},
+		"artistOffset": {"0"},
+		"song_count":   {string(song_count)},
+		"songOffset":   {"0"},
+	}
+	fmt.Println(params.Encode())
+	// nd.JsonRequestSubsonic("GET", "search3.view", )
+	return SearchResults{}
+	// Artists: ,
+	// }
 }

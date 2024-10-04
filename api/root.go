@@ -94,27 +94,6 @@ func Initialize(server string, creds Credentials) *Navidrome {
 }
 
 // API Requests
-type GenericResponse struct {
-	Response SubsonicResponse `json:"subsonic-response"`
-}
-
-type SubsonicResponse struct {
-	Status        string `json:"status"`
-	Version       string `json:"version"`
-	Type          string `json:"type"`
-	ServerVersion string `json:"serverVersion"`
-	OpenSubsonic  bool   `json:"openSubsonic"`
-
-	// Responses
-	SearchResult3 SearchResults `json:"searchResult3"`
-}
-
-type SearchResults struct {
-	Artists []Artist `json:"artist"`
-	Albums  []Album  `json:"album"`
-	Tracks  []Track  `json:"song"`
-}
-
 func (nd Navidrome) Search(query string, album_count int, artist_count int, song_count int) SearchResults {
 	var results GenericResponse
 	nd.JsonRequestSubsonic("GET", "search3.view", url.Values{

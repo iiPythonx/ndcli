@@ -50,3 +50,24 @@ type Track struct {
 	ChannelCount int    `json:"channelCount"`
 	SamplingRate string `json:"samplingRate"`
 }
+
+type GenericResponse struct {
+	Response SubsonicResponse `json:"subsonic-response"`
+}
+
+type SubsonicResponse struct {
+	Status        string `json:"status"`
+	Version       string `json:"version"`
+	Type          string `json:"type"`
+	ServerVersion string `json:"serverVersion"`
+	OpenSubsonic  bool   `json:"openSubsonic"`
+
+	// Responses
+	SearchResult3 SearchResults `json:"searchResult3"`
+}
+
+type SearchResults struct {
+	Artists []Artist `json:"artist"`
+	Albums  []Album  `json:"album"`
+	Tracks  []Track  `json:"song"`
+}

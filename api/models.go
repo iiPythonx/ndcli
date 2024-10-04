@@ -1,5 +1,9 @@
 package api
 
+type NavidromeItem interface {
+	GetName() string
+}
+
 type Artist struct {
 	PlayCount  int    `json:"playCount"`
 	PlayDate   string `json:"playDate"`
@@ -49,6 +53,18 @@ type Track struct {
 	Year         int    `json:"year"`
 	ChannelCount int    `json:"channelCount"`
 	SamplingRate string `json:"samplingRate"`
+}
+
+func (artist Artist) GetName() string {
+	return artist.Name
+}
+
+func (album Album) GetName() string {
+	return album.Name
+}
+
+func (track Track) GetName() string {
+	return track.Name
 }
 
 type GenericResponse struct {
